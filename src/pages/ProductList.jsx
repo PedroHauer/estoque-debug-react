@@ -33,7 +33,7 @@ export default function ProductList() {
     if (!confirmed) return
 
     try {
-      await deleteProduct()
+      await deleteProduct(id)
       setProducts((current) => current.filter((product) => product.id !== id))
     } catch (err) {
       setError(err.message || 'Erro ao excluir produto.')

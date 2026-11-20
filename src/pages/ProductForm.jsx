@@ -18,26 +18,56 @@ export default function ProductForm() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!isEditing) return
+    setError('')
+
+    // Mesmo componente para /products/new e /products/:id/edit:
+    // ao trocar de rota o estado precisa ser reiniciado.
+    if (!isEditing) {
+      setForm(initialForm)
+      setLoading(false)
+      return
+    }
+
+    let ignore = false
+    setLoading(true)
 
     async function loadProduct() {
       try {
         const product = await getProductById(id)
+        if (ignore) return
         setForm({
-          name: product.name,
-          category: product.category,
-          price: product.price,
-          quantity: product.quantity,
+          name: product.name ?? '',
+          category: product.category ?? '',
+          price: product.price ?? '',
+          quantity: product.quantity ?? '',
         })
       } catch (err) {
-        setError(err.message || 'Erro ao buscar produto.')
+        if (!ignore) setError(err.message || 'Erro ao buscar produto.')
       } finally {
-        setLoading(false)
+        if (!ignore) setLoading(false)
       }
     }
 
     loadProduct()
-  }, [])
+    return () => {
+      ignore = true
+    }
+  }, [id, isEditing])
+
+  function validate(values) {
+    if (!String(values.name).trim()) return 'Informe o nome do produto.'
+    if (!String(values.category).trim()) return 'Informe a categoria do produto.'
+
+    if (String(values.price).trim() === '') return 'Informe o preço do produto.'
+    const price = Number(values.price)
+    if (!Number.isFinite(price) || price < 0) return 'O preço deve ser um número maior ou igual a zero.'
+
+    if (String(values.quantity).trim() === '') return 'Informe a quantidade em estoque.'
+    const quantity = Number(values.quantity)
+    if (!Number.isInteger(quantity) || quantity < 0) return 'A quantidade deve ser um número inteiro maior ou igual a zero.'
+
+    return ''
+  }
 
   function handleChange(event) {
     const { name, value } = event.target
@@ -48,8 +78,15 @@ export default function ProductForm() {
     event.preventDefault()
     setError('')
 
+    const validationError = validate(form)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
     const product = {
-      ...form,
+      name: form.name.trim(),
+      category: form.category.trim(),
       price: Number(form.price),
       quantity: Number(form.quantity),
     }
